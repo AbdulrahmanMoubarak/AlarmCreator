@@ -14,11 +14,11 @@ interface RecordingAlarmDAO {
     @Insert
     fun insertRecordingAlarm(recording_alarm: ChannelRecordingAlarmModel)
 
-    @Query ("SELECT * FROM $ALARMS_TABLE_NAME WHERE channel_name = (:channel_name) AND time = (:time)")
-    fun findAlarm(channel_name: String, time: Long): Flow<ChannelRecordingAlarmModel>
+    @Query ("SELECT * FROM $ALARMS_TABLE_NAME WHERE channel_name = (:channel_name) AND hour = (:hour) AND minute = (:minute)")
+    fun findAlarm(channel_name: String, hour: Int, minute: Int): Flow<ChannelRecordingAlarmModel>
 
-    @Query ("SELECT recordingId FROM $ALARMS_TABLE_NAME WHERE channel_name = (:channel_name) AND time = (:time)")
-    fun findAlarmId(channel_name: String, time: Long): Flow<Int>
+    @Query ("SELECT recordingId FROM $ALARMS_TABLE_NAME WHERE channel_name = (:channel_name) AND hour = (:hour) AND minute = (:minute)")
+    fun findAlarmId(channel_name: String, hour: Int, minute: Int): Flow<Int>
 
     @Query ("SELECT * FROM $ALARMS_TABLE_NAME")
     fun getAllAlarms(): Flow<List<ChannelRecordingAlarmModel>>
@@ -26,8 +26,8 @@ interface RecordingAlarmDAO {
     @Query("SELECT * FROM $ALARMS_TABLE_NAME WHERE recordingId = (:id)")
     fun findAlarmById(id: Int): Flow<ChannelRecordingAlarmModel>
 
-    @Query("UPDATE $ALARMS_TABLE_NAME SET time = (:new_time) WHERE recordingId = (:id);")
-    fun updateAlarmById(id: Int, new_time: Long)
+    @Query("UPDATE $ALARMS_TABLE_NAME SET active = (:active) WHERE recordingId = (:id);")
+    fun cancelAlarmById(id: Int, active: Boolean)
 
     @Query("DELETE FROM $ALARMS_TABLE_NAME WHERE recordingId = (:id)")
     fun deleteAlarmById(id: Int)

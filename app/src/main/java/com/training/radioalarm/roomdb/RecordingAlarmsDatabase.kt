@@ -32,11 +32,11 @@ abstract class RecordingAlarmsDatabase: RoomDatabase(){
 
     suspend fun insertRecordingAlarm(recording_alarm: ChannelRecordingAlarmModel): Flow<Int>{
         dao().insertRecordingAlarm(recording_alarm)
-        return dao().findAlarmId(recording_alarm.channel_name, recording_alarm.time)
+        return dao().findAlarmId(recording_alarm.channel_name, recording_alarm.hour, recording_alarm.minute)
     }
 
-    suspend fun findAlarm(channel_name: String, time: Long): Flow<ChannelRecordingAlarmModel>{
-        return dao().findAlarm(channel_name, time)
+    suspend fun findAlarm(channel_name: String, hour: Int, min: Int): Flow<ChannelRecordingAlarmModel>{
+        return dao().findAlarm(channel_name, hour, min)
     }
 
     suspend fun getAllAlarms(): Flow<List<ChannelRecordingAlarmModel>>{
@@ -47,8 +47,8 @@ abstract class RecordingAlarmsDatabase: RoomDatabase(){
         return dao().findAlarmById(id)
     }
 
-    suspend fun updateAlarmById(id: Int, time: Long){
-        dao().updateAlarmById(id, time)
+    suspend fun cancelAlarmById(id: Int, active: Boolean){
+        dao().cancelAlarmById(id, active)
     }
 
     suspend fun deleteAlarmbyId(id: Int){

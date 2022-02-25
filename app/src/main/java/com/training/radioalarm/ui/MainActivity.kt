@@ -15,15 +15,31 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.work.BackoffPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkManager
 import com.training.radioalarm.R
+import com.training.radioalarm.application.MainApplication
+import com.training.radioalarm.roomdb.RecordingAlarmsDatabase
 import com.training.radioalarm.roomdb.model.RadioChannelModel
 import com.training.radioalarm.util.Constants.APP_IN_BATTERY_OPTIMIZATION
 import com.training.radioalarm.util.Constants.DEVICE_ABLE_TO_RECORD
 import com.training.radioalarm.util.Constants.DEVICE_IN_POWER_SAVING_MODE
+import com.training.radioalarm.util.ForegroundWorkerCreator
+import com.training.radioalarm.util.SharedPreferenceManager
 import com.training.radioalarm.viewmodel.AlarmsViewModel
+import com.training.radioalarm.workmanager.ForegroundAlarmWorker
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
+
+    private var database: RecordingAlarmsDatabase? = null
 
     lateinit var alarmViewmodel: AlarmsViewModel
     private var channel = RadioChannelModel(
@@ -35,15 +51,25 @@ class MainActivity : AppCompatActivity() {
         "Adult Contemporary,Culture,Talk"
     )
 
-    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val granted = checkPermission()
+        alarmViewmodel = ViewModelProvider(this).get(AlarmsViewModel::class.java)
+
+        val word = if (SharedPreferenceManager().isBroadcastAfterBoot()) {
+            "After boot"
+        } else {
+            "Normal"
+        }
+
+        ForegroundWorkerCreator().createForegroundWorker()
+        SharedPreferenceManager().setNormalUsage()
 
 
-        alarmViewmodel  = ViewModelProvider(this).get(AlarmsViewModel::class.java)
+        txtboot.text = word
+
+        showAllAlarms()
 
         pick_btn_main.setOnClickListener {
             val state = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -51,17 +77,17 @@ class MainActivity : AppCompatActivity() {
             } else {
                 DEVICE_ABLE_TO_RECORD
             }
-            if(state == DEVICE_ABLE_TO_RECORD) {
+            if (state == DEVICE_ABLE_TO_RECORD) {
                 val dialog = RecordTimeDialogFragment(::onDialogConfirmVm)
                 dialog.show(
                     supportFragmentManager,
                     "record start time and duration"
                 )
-            } else if (state == APP_IN_BATTERY_OPTIMIZATION){
+            } else if (state == APP_IN_BATTERY_OPTIMIZATION) {
                 val dialog = AlertDialog.Builder(this).apply {
                     setTitle("Can't set alarm !!")
                     setMessage("App is in battery optimiztion, please change the state to be able to set the alarm.")
-                    setPositiveButton("OK"){dialogInterface, i ->
+                    setPositiveButton("OK") { dialogInterface, i ->
                         val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                         } else {
@@ -69,10 +95,17 @@ class MainActivity : AppCompatActivity() {
                         }
                         startActivity(intent)
                     }
-                    setNegativeButton("Cancel"){dialogInterface, i ->
+                    setNegativeButton("Cancel") { dialogInterface, i ->
                     }
                 }
                 dialog.show()
+            }
+        }
+
+        cancelbtn.setOnClickListener {
+            val id = cancelInput.text.toString()
+            if (id != "" && id != null) {
+                cancelAlarm(id.toInt())
             }
         }
     }
@@ -103,36 +136,53 @@ class MainActivity : AppCompatActivity() {
         return DEVICE_ABLE_TO_RECORD
     }
 
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun checkPermission(): Boolean{
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.SET_ALARM
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                return true
-            }
-            else -> {
-                return requestPermission()
+    private fun showAllAlarms() {
+        MainApplication.getAppContext()?.let {
+            database = RecordingAlarmsDatabase.getInstance(it)
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            database?.getAllAlarms()?.collect {
+                for (alarm in it) {
+                    if (alarm.active) {
+                        withContext(Dispatchers.Main) {
+                            alarmstxt.text =
+                                alarmstxt.text.toString() + alarm.recordingId.toString() + ","
+                        }
+                    }
+                }
             }
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.S)
-    private fun requestPermission():Boolean{
-        var granted = false
-        val requestPermissionLauncher =
-            registerForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) { isGranted: Boolean ->
-                granted = isGranted
+    private fun cancelAlarm(id: Int) {
+        MainApplication.getAppContext()?.let {
+            database = RecordingAlarmsDatabase.getInstance(it)
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                database?.cancelAlarmById(id, false)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Alarm $id canceled", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    txtboot.text = e.message
+                }
             }
-
-
-            requestPermissionLauncher.launch(Manifest.permission.SET_ALARM)
-
-        return granted
+        }
     }
+    /*
+    private fun createForegroundWorker() {
+        WorkManager.getInstance(this).cancelAllWorkByTag("foreground_worker")
+        val alarm_work_request = OneTimeWorkRequestBuilder<ForegroundAlarmWorker>().apply {
+            addTag("foreground_worker")
+            setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+
+        }
+        WorkManager.getInstance(this).enqueue(alarm_work_request.build())
+    }
+     */
 }
 
 /*

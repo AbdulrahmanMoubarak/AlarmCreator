@@ -65,11 +65,9 @@ class ChannelAlarmService : Service() {
         Log.i("here", " RecordService: onStartCommand() is called ")
 
         super.onStartCommand(intent, flags, startId)
-
-        recording = intent?.getSerializableExtra("recording") as ChannelRecordingAlarmModel
-
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            startForegroundService(recording.channel_name)
+            startForegroundService("This is an alarm")
         else
             startForeground(2, Notification())
 
@@ -83,8 +81,8 @@ class ChannelAlarmService : Service() {
             MainApplication.getAppContext()?.let {
                 PlayerNotificationManager.createImmediateNotification(
                     it,
-                    "Finished recording",
-                    "Record saved successfully. Tab to view"
+                    "Alarm",
+                    "Alarm launched successfully."
                 )
             }
         }
