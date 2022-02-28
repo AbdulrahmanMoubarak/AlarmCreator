@@ -1,9 +1,11 @@
 package com.training.radioalarm.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.icu.util.Calendar
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -54,6 +56,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        requestBackgroundProcessing()
 
         alarmViewmodel = ViewModelProvider(this).get(AlarmsViewModel::class.java)
 
@@ -171,6 +175,23 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun requestBackgroundProcessing(){
+        val intent = Intent()
+        val packageName: String = getPackageName()
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                pm.isIgnoringBatteryOptimizations(packageName)
+            } else {
+                TODO("VERSION.SDK_INT < M")
+            }
+        ) intent.action =
+            Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS else {
+            intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+            intent.data = Uri.parse("package:$packageName")
+        }
+        startActivity(intent)
     }
     /*
     private fun createForegroundWorker() {

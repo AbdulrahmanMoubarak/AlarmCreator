@@ -56,6 +56,14 @@ class ChannelAlarmBroadcastReciever : BroadcastReceiver() {
             resetAllAlarms()
             return
         }
+
+        if (
+            actionStr.equals(Intent.ACTION_SHUTDOWN) ||
+            actionStr.equals(Intent.ACTION_REBOOT)
+        ) {
+            SharedPreferenceManager().setShutDownSharedPreference()
+            return
+        }
     }
 
     private fun resetAllAlarms() {

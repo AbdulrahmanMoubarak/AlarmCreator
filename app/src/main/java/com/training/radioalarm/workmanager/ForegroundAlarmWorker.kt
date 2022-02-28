@@ -8,6 +8,8 @@ import android.graphics.Color
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationCompat.PRIORITY_HIGH
+import androidx.core.app.NotificationCompat.VISIBILITY_SECRET
 import androidx.work.ForegroundInfo
 import androidx.work.WorkManager
 import androidx.work.Worker
@@ -60,6 +62,7 @@ class ForegroundAlarmWorker(context: Context, parameters: WorkerParameters) :
                 .setSmallIcon(R.drawable.ic_radio_svgrepo_com)
                 .setOngoing(true)
                 .setSilent(true)
+                .setPriority(PRIORITY_HIGH)
                 .addAction(android.R.drawable.ic_delete, cancel, intent)
                 .build()
         }
